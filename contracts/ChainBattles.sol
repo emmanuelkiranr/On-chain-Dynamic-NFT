@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.0;
+pragma solidity ^0.8.4;
 
 import "@openzeppelin/contracts/token/ERC721/extensions/ERC721URIStorage.sol";
 import "@openzeppelin/contracts/utils/Counters.sol";
@@ -11,11 +11,18 @@ contract ChainBattles is ERC721URIStorage {
     using Counters for Counters.Counter;
     Counters.Counter private _tokenIds;
 
-    mapping(uint256 => uint256) public tokenIdToLevels;
+    struct Stats {
+        uint256 levels;
+        uint256 hitpoints;
+        uint256 strength;
+        uint256 speed;
+    }
+
+    mapping(uint256 => Stats) public tokenIdToStats;
 
     constructor() ERC721("Chain Battles", "CBTLS") {}
 
-    function generateCharacter(uint256 tokenId)
+    function generateCharacterNFT(uint256 tokenId)
         public
         view
         returns (string memory)
@@ -31,6 +38,18 @@ contract ChainBattles is ERC721URIStorage {
             "Levels: ",
             getLevels(tokenId),
             "</text>",
+            '<text x="50%" y="60%" class="base" dominant-baseline="middle" text-anchor="middle">',
+            "Hitpoints: ",
+            getHitpoints(tokenId),
+            "</text>",
+            '<text x="50%" y="70%" class="base" dominant-baseline="middle" text-anchor="middle">',
+            "Strength: ",
+            getStrength(tokenId),
+            "</text>",
+            '<text x="50%" y="80%" class="base" dominant-baseline="middle" text-anchor="middle">',
+            "Speed: ",
+            getSpeed(tokenId),
+            "</text>",
             "</svg>"
         );
         return
@@ -43,8 +62,23 @@ contract ChainBattles is ERC721URIStorage {
     }
 
     function getLevels(uint256 tokenId) public view returns (string memory) {
-        uint256 levels = tokenIdToLevels[tokenId];
+        uint256 levels = tokenIdToStats[tokenId].levels;
         return levels.toString();
+    }
+
+    function getHitpoints(uint256 tokenId) public view returns (string memory) {
+        uint256 hitpoints = tokenIdToStats[tokenId].hitpoints;
+        return hitpoints.toString();
+    }
+
+    function getStrength(uint256 tokenId) public view returns (string memory) {
+        uint256 strength = tokenIdToStats[tokenId].strength;
+        return strength.toString();
+    }
+
+    function getSpeed(uint256 tokenId) public view returns (string memory) {
+        uint256 speed = tokenIdToStats[tokenId].speed;
+        return speed.toString();
     }
 
     function getTokenURI(uint256 tokenId) public view returns (string memory) {
@@ -55,7 +89,7 @@ contract ChainBattles is ERC721URIStorage {
             '",',
             '"description": "Battles on chain",',
             '"image": "',
-            generateCharacter(tokenId),
+            generateCharacterNFT(tokenId),
             '"',
             "}"
         );
@@ -68,11 +102,33 @@ contract ChainBattles is ERC721URIStorage {
             );
     }
 
+    // generating random num
+    uint256 randNonce = 0;
+
+    function randNum(uint256 num) internal returns (uint256) {
+        // increase nonce
+        randNonce++;
+        return
+            uint256(
+                keccak256(
+                    abi.encodePacked(
+                        block.timestamp,
+                        block.difficulty,
+                        randNonce
+                    )
+                )
+            ) % num;
+    }
+
     function mint() public {
         _tokenIds.increment();
         uint256 newItemId = _tokenIds.current();
         _safeMint(msg.sender, newItemId);
-        tokenIdToLevels[newItemId] = 0;
+        Stats storage stats = tokenIdToStats[newItemId];
+        stats.levels = 0;
+        stats.hitpoints = 0;
+        stats.strength = 0;
+        stats.speed = 0;
         _setTokenURI(newItemId, getTokenURI(newItemId));
     }
 
@@ -82,8 +138,11 @@ contract ChainBattles is ERC721URIStorage {
             ownerOf(tokenId) == msg.sender,
             "Use must own this token to train it"
         );
-        uint256 currentLevel = tokenIdToLevels[tokenId];
-        tokenIdToLevels[tokenId] = currentLevel + 1;
+        Stats storage stats = tokenIdToStats[tokenId];
+        stats.levels = stats.levels + randNum(10);
+        stats.hitpoints = stats.hitpoints + randNum(10);
+        stats.strength = stats.strength + randNum(10);
+        stats.speed = stats.speed + randNum(10);
         _setTokenURI(tokenId, getTokenURI(tokenId));
     }
 }
